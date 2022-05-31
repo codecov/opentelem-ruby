@@ -1,0 +1,22 @@
+name: release ruby gem
+
+on:
+  release:
+    types: 
+      - published
+    branches:
+      - master
+
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: release the gem
+        env:
+          GEM_HOST_API_KEY: ${{ secrets.GEM_HOST_API_KEY }}
+        run: |
+          rake "compare_versions[$GITHUB_REF]"
+          gem build -V
+          gem push codecov_opentelem-$(rake get_version).gem -V
