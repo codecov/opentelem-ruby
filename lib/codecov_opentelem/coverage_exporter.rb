@@ -39,7 +39,7 @@ class CodecovCoverageStorageManager
   end
 end
 
-class CodecovCoverageGenerator < SpanProcessor
+class CodecovCoverageGenerator < OpenTelemetry::SDK::Trace::SpanProcessor
   def initialize(cov_storage, sample_rate)
     super()
     @cov_storage = cov_storage
@@ -55,7 +55,7 @@ class CodecovCoverageGenerator < SpanProcessor
   end
 end
 
-class CoverageExporter < SpanExporter
+class CoverageExporter < OpenTelemetry::SDK::Trace::Export::SpanExporter
   def initialize(cov_storage, repository_token, code, codecov_url, untracked_export_rate)
     super()
     @cov_storage = cov_storage
