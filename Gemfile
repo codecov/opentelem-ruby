@@ -10,3 +10,4 @@ gem "rake", "~> 13.0"
 gem 'opentelemetry-sdk'
 gem 'opentelemetry-exporter-otlp'
 gem 'opentelemetry-instrumentation-all'
+gem "rspec"
