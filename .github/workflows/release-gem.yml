@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: release the gem
         env:
-          GEM_HOST_API_KEY: ${{ secrets.GEM_HOST_API_KEY }}
+          GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
         run: |
           rake "compare_versions[$GITHUB_REF]"
           gem build -V
