@@ -14,23 +14,22 @@ end
 
 class CodecovCoverageStorageManager
   def initialize(filters)
-    Coverage.start
     @filters = filters
     @inner = {}
   end
 
   def start_coverage_for_span(span)
     if !@filters[CoverageSpanFilter::REGEX_NAME].nil? && @filters[CoverageSpanFilter::REGEX_NAME].match(span.name)
+      puts 'returned false'
       return false
     end
 
-    Coverage.resume unless Coverage.running?
+    Coverage.start unless Coverage.running?
     true
   end
 
   def stop_coverage_for_span(span)
-    span_id = span.span_id
-    Coverage.suspend
+    span_id = span.context.span_id
     @inner[span_id] = Coverage.result(stop: false, clear: true)
   end
 
@@ -48,10 +47,10 @@ class CodecovCoverageGenerator < OpenTelemetry::SDK::Trace::SpanProcessor
   end
 
   def on_start(span, _parent_context = nil)
-    @cov_storage.start_coverage_for_span(span) if rand < @sample_rate
+    @cov_storage.start_coverage_for_span(span) if rand() < @sample_rate
   end
 
-  def on_end(span)
+  def on_finish(span)
     @cov_storage.stop_coverage_for_span(span)
   end
 end
@@ -69,6 +68,7 @@ class CoverageExporter < OpenTelemetry::SDK::Trace::Export::SpanExporter
   def export(spans, timeout)
     tracked_spans = []
     untracked_spans = []
+
     spans.each do |span|
       cov = @cov_storage.pop_coverage_for_span(span)
 
@@ -77,15 +77,18 @@ class CoverageExporter < OpenTelemetry::SDK::Trace::Export::SpanExporter
         v = v.dup.force_encoding("ISO-8859-1").encode("UTF-8") if v.is_a? String
         span_hash[k] = v
       end
-      s = span_hash.to_json
 
       if !cov.nil?
-        s['codecov'] = { 'type' => 'bytes', 'coverage' => cov }
-        tracked_spans.append(s)
-      elsif rand < @untracked_export_rate
-        untracked_spans.append(s)
+        span_hash['codecov'] = {
+          'coverage': cov.to_json,
+          'type': 'json',
+        }
+        tracked_spans.append(span_hash.to_json)
+      elsif rand() < @untracked_export_rate
+        untracked_spans.append(span_hash.to_json)
       end
     end
+
     return OpenTelemetry::SDK::Trace::Export::SUCCESS if !tracked_spans && !untracked_spans
 
     body = { 'profiling' => @code }.to_json
@@ -110,7 +113,7 @@ class CoverageExporter < OpenTelemetry::SDK::Trace::Export::SpanExporter
     req.body = {
       'spans' => tracked_spans,
       'untracked' => untracked_spans
-    }.to_json,
+    }.to_json
     https.request(req)
     OpenTelemetry::SDK::Trace::Export::SUCCESS
   end
