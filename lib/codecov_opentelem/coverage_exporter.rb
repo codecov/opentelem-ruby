@@ -28,14 +28,14 @@ class CodecovCoverageStorageManager
     true
   end
 
-  def stop_coverage_for_span(_span)
-    span_id = span.context.span_id
+  def stop_coverage_for_span(span)
+    span_id = span.span_id
     Coverage.suspend
     @inner[span_id] = Coverage.result(stop: false, clear: true)
   end
 
-  def pop_coverage_for_span(_span)
-    span_id = span.context.span_id
+  def pop_coverage_for_span(span)
+    span_id = span.span_id
     @inner.delete(span_id)
   end
 end
@@ -66,12 +66,19 @@ class CoverageExporter < OpenTelemetry::SDK::Trace::Export::SpanExporter
     @untracked_export_rate = untracked_export_rate
   end
 
-  def export(spans)
+  def export(spans, timeout)
     tracked_spans = []
     untracked_spans = []
     spans.each do |span|
-      cov = cov_storage.pop_coverage_for_span(span)
-      s = JSON.parse(span)
+      cov = @cov_storage.pop_coverage_for_span(span)
+
+      span_hash = Hash.new
+      span.to_h.each do |k, v|
+        v = v.dup.force_encoding("ISO-8859-1").encode("UTF-8") if v.is_a? String
+        span_hash[k] = v
+      end
+      s = span_hash.to_json
+
       if !cov.nil?
         s['codecov'] = { 'type' => 'bytes', 'coverage' => cov }
         tracked_spans.append(s)
@@ -79,19 +86,32 @@ class CoverageExporter < OpenTelemetry::SDK::Trace::Export::SpanExporter
         untracked_spans.append(s)
       end
     end
-    return SpanExportResult.SUCCESS if !tracked_spans && !untracked_spans
+    return OpenTelemetry::SDK::Trace::Export::SUCCESS if !tracked_spans && !untracked_spans
 
-    res = Net::HTTP.post(URI.join(@codecov_url, '/profiling/uploads'),
-                         { 'code' => @code }.to_json,
-                         'Content-Type' => 'application/json',
-                         'Authorization' => "repotoken #{@repository_token}")
-    return SpanExportResult.FAILURE if res.is_a?(Net::HTTPError)
+    body = { 'profiling' => @code }.to_json
+    res = Net::HTTP.post(
+      URI.join(@codecov_url, '/profiling/uploads'),
+      { 'profiling' => @code }.to_json,
+      'Content-Type' => 'application/json',
+      'Authorization' => "repotoken #{@repository_token}"
+    )
+    return OpenTelemetry::SDK::Trace::Export::FAILURE if res.is_a?(Net::HTTPError)
 
-    location = res.body.raw_upload_location
-    Net::HTTP.put(URI(location),
-                  { 'spans' => tracked_spans,
-                    'untracked' => untracked_spans }.to_json,
-                  'Content-Type' => 'text/plain')
-    SpanExportResult.SUCCESS
+    location = JSON(res.body)['raw_upload_location']
+    uri = URI(location)
+    https = Net::HTTP.new(uri.host, uri.port)
+    https.use_ssl = true
+    req = Net::HTTP::Put.new(
+      location,
+      {
+        'Content-Type' => 'text/plain'
+      }
+    )
+    req.body = {
+      'spans' => tracked_spans,
+      'untracked' => untracked_spans
+    }.to_json,
+    https.request(req)
+    OpenTelemetry::SDK::Trace::Export::SUCCESS
   end
 end
