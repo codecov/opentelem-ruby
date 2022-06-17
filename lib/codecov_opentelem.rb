@@ -40,9 +40,9 @@ def get_codecov_opentelemetry_instances(
                          'Authorization' => "repotoken #{repository_token}")
     raise UnableToStartProcessorException if res.is_a?(Net::HTTPError)
   end
-  manager = CodecovCoverageStorageManager(filters)
-  generator = CodecovCoverageGenerator(manager, sample_rate)
-  exporter = CoverageExporter(
+  manager = CodecovCoverageStorageManager.new(filters)
+  generator = CodecovCoverageGenerator.new(manager, sample_rate)
+  exporter = CoverageExporter.new(
     manager, repository_token, code, codecov_url, untracked_export_rate
   )
   [generator, exporter]
