@@ -71,15 +71,14 @@ class CoverageExporter < OpenTelemetry::SDK::Trace::Export::SpanExporter
     untracked_spans = []
     spans.each do |span|
       cov = @cov_storage.pop_coverage_for_span(span)
+
       span_hash = Hash.new
-      span.to_h.keys.each do |key|
-        value = span.to_h[key]
-        if value.is_a? String
-          value = value.dup.force_encoding("ISO-8859-1").encode("UTF-8")
-        end
-        span_hash[key] = value
+      span.to_h.each do |k, v|
+        v = v.dup.force_encoding("ISO-8859-1").encode("UTF-8") if v.is_a? String
+        span_hash[k] = v
       end
       s = span_hash.to_json
+
       if !cov.nil?
         s['codecov'] = { 'type' => 'bytes', 'coverage' => cov }
         tracked_spans.append(s)
