@@ -14,6 +14,7 @@ end
 
 class CodecovCoverageStorageManager
   def initialize(filters)
+    Coverage.start
     @filters = filters
     @inner = {}
   end
@@ -23,7 +24,7 @@ class CodecovCoverageStorageManager
       return false
     end
 
-    Coverage.resume
+    Coverage.resume unless Coverage.running?
     true
   end
 
@@ -47,7 +48,7 @@ class CodecovCoverageGenerator < OpenTelemetry::SDK::Trace::SpanProcessor
   end
 
   def on_start(span, _parent_context = nil)
-    @cov_storage.possibly_start_cov_for_span(span) if rand < @sample_rate
+    @cov_storage.start_coverage_for_span(span) if rand < @sample_rate
   end
 
   def on_end(span)
@@ -69,7 +70,7 @@ class CoverageExporter < OpenTelemetry::SDK::Trace::Export::SpanExporter
     tracked_spans = []
     untracked_spans = []
     spans.each do |span|
-      cov = cov_storage.pop_cov_for_span(span)
+      cov = cov_storage.pop_coverage_for_span(span)
       s = JSON.parse(span)
       if !cov.nil?
         s['codecov'] = { 'type' => 'bytes', 'coverage' => cov }
