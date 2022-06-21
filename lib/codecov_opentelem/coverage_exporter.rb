@@ -9,6 +9,7 @@ require 'coverage'
 require 'opentelemetry/sdk'
 
 module CoverageSpanFilter
+  FILE_IGNORE_NAME = 'file_ignore_regex'
   REGEX_NAME = 'name_regex'
   SPAN_KIND = 'span_kind'
 end
@@ -36,7 +37,8 @@ class CodecovCoverageStorageManager
 
   def pop_coverage_for_span(span)
     span_id = span.span_id
-    @inner.delete(span_id)
+    cov = @inner.delete(span_id)
+    cov.select { |key, value| !@filters[CoverageSpanFilter::FILE_IGNORE_NAME].match(key) } unless @filters[CoverageSpanFilter::FILE_IGNORE_NAME].nil?
   end
 end
 
