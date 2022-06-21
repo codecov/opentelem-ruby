@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
+require 'base64'
 require 'json'
-require 'uri'
 require 'net/http'
+require 'uri'
 
-require 'opentelemetry/sdk'
 require 'coverage'
+require 'opentelemetry/sdk'
 
 module CoverageSpanFilter
   REGEX_NAME = 'name_regex'
@@ -78,14 +79,17 @@ class CoverageExporter < OpenTelemetry::SDK::Trace::Export::SpanExporter
         span_hash[k] = v
       end
 
+      cov_string = cov.map{ |k, v| "\"#{k}\":[#{v.map{ |i| i.nil? ? "null" : i}.join(',')}]"}.join(',')
+      cov_string = "{\"coverage\":{#{cov_string}}}"
+
       if !cov.nil?
         span_hash['codecov'] = {
-          'coverage': cov.to_json,
-          'type': 'json',
+          'coverage': Base64.strict_encode64(cov_string),
+          'type': 'bytes',
         }
-        tracked_spans.append(span_hash.to_json)
+        tracked_spans.append(span_hash)
       elsif rand() < @untracked_export_rate
-        untracked_spans.append(span_hash.to_json)
+        untracked_spans.append(span_hash)
       end
     end
 
