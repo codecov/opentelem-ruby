@@ -1,4 +1,4 @@
-# opentelem-python
+# opentelem-ruby
 
 ## Purpose
 
