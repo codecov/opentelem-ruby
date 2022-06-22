@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This package allows Ruby projects to leverage Codecov's [Impact Analysis]([https://about.codecov.io/product/feature/runtime-insights/](https://docs.codecov.com/docs/impact-analysis)) feature.
+This package allows Ruby projects to leverage Codecov's [Impact Analysis](https://docs.codecov.com/docs/impact-analysis) feature.
 
 More information about Runtime Insights can be found [in Codecov's public documentation]([https://docs.codecov.com/docs/runtime-insights](https://docs.codecov.com/docs/impact-analysis)).
 
