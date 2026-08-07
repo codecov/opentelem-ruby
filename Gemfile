@@ -11,3 +11,4 @@ gem 'opentelemetry-sdk'
 gem 'opentelemetry-exporter-otlp'
 gem 'opentelemetry-instrumentation-all'
 gem "rspec"
+gem "google-protobuf", ">= 3.25.5"
